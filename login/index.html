@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARS Control Center - Sign In</title>
+  <link rel="icon" type="image/png" href="../assets/logo.png">
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/auth.css">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/api.js?v=4"></script>
+  <script src="../assets/js/app-state.js"></script>
+  <script src="../assets/js/auth.js"></script>
+</head>
+<body>
+  <div class="radar-auth-wrapper">
+    <!-- Full-Screen Radar Background & Rotating Sweep -->
+    <div class="radar-bg-canvas">
+      <svg class="radar-svg-grid" viewBox="0 0 1000 1000">
+        <circle cx="500" cy="500" r="450" fill="none" stroke="#1C2B47" stroke-width="1.5" />
+        <circle cx="500" cy="500" r="320" fill="none" stroke="#1C2B47" stroke-width="1.5" />
+        <circle cx="500" cy="500" r="180" fill="none" stroke="#1C2B47" stroke-width="1.5" />
+        <line x1="500" y1="0" x2="500" y2="1000" stroke="#1C2B47" stroke-width="1" />
+        <line x1="0" y1="500" x2="1000" y2="500" stroke="#1C2B47" stroke-width="1" />
+        <line x1="146" y1="146" x2="854" y2="854" stroke="#1C2B47" stroke-width="1" stroke-dasharray="6 6" />
+        <line x1="854" y1="146" x2="146" y2="854" stroke="#1C2B47" stroke-width="1" stroke-dasharray="6 6" />
+      </svg>
+      <div class="radar-sweep-line"></div>
+
+      <!-- Animated Radar Blips -->
+      <div class="radar-blip blip-high" style="top: 25%; left: 30%;"></div>
+      <div class="radar-blip blip-med" style="top: 65%; left: 75%; animation-delay: 1.2s;"></div>
+      <div class="radar-blip blip-low" style="top: 40%; left: 80%; animation-delay: 2.1s;"></div>
+    </div>
+
+    <!-- Centered Glass Panel Login Card -->
+    <div class="radar-login-card">
+      <!-- Logo Container with 3 Siren Pulse Rings -->
+      <div class="radar-logo-container">
+        <svg class="radar-logo-rings" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="25" />
+          <circle cx="60" cy="60" r="35" />
+          <circle cx="60" cy="60" r="45" />
+        </svg>
+        <img src="../assets/logo.png" alt="ARS Siren Logo" class="auth-logo-img">
+        <div class="radar-card-brand">ARS Control Center</div>
+        <div class="radar-card-slogan">Every second counts.</div>
+      </div>
+
+      <div class="divider-line"></div>
+
+      <!-- In-Card Step Progress Dots -->
+      <div class="step-progress-dots">
+        <span class="progress-dot active"></span>
+        <span class="progress-dot"></span>
+        <span class="progress-dot"></span>
+        <span class="progress-dot"></span>
+      </div>
+
+      <div id="auth-alert" class="alert-message"></div>
+
+      <!-- STEP 0: LOGIN VIEW -->
+      <div id="login-step">
+        <div style="text-align: center;">
+          <h2 class="auth-header-title">Welcome Back</h2>
+          <p class="auth-header-subtitle">Sign in to continue to ARS Control Center</p>
+        </div>
+
+        <!-- Role Selector Buttons -->
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="font-size: 0.75rem; text-align: center; display: block;">SELECT YOUR OPERATING ROLE</label>
+          <div class="role-toggle-group">
+            <button type="button" id="role-rescuer-btn" class="role-btn active">
+              🛡️ Rescuer
+            </button>
+            <button type="button" id="role-admin-btn" class="role-btn">
+              ⚙️ Admin / Host
+            </button>
+          </div>
+        </div>
+
+        <form id="login-form">
+          <div class="form-group">
+            <label for="login-phone">Mobile Number</label>
+            <input type="tel" id="login-phone" class="form-control" placeholder="+91 98765 43210" style="padding-left: 16px;" required>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 8px;">
+            <label for="login-password">Password</label>
+            <div class="password-input-wrapper">
+              <input type="password" id="login-password" class="form-control" placeholder="••••••••" style="padding-left: 16px; padding-right: 44px;" required>
+              <span id="toggle-password-eye" class="password-toggle-eye" title="Show/Hide Password">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+
+          <div style="text-align: right; margin-bottom: 20px;">
+            <a href="#" id="show-forgot-btn" class="auth-link" style="font-size: 0.82rem;">Forgot password?</a>
+          </div>
+
+          <button type="submit" id="login-submit-btn" class="btn-primary" style="width: 100%;">
+            LOGIN TO ARS
+          </button>
+        </form>
+
+        <div id="signup-link-container" class="auth-footer-links" style="margin-top: 20px; padding-top: 14px;">
+          <div>Don't have an account? <a href="#" id="show-signup-link" class="auth-link">SIGN UP</a></div>
+        </div>
+      </div>
+
+      <!-- STEP 1: SIGN UP VIEW -->
+      <div id="signup-step" style="display: none;">
+        <div style="text-align: center;">
+          <h2 class="auth-header-title">Rescuer Registration</h2>
+          <p class="auth-header-subtitle">Submit details for field dispatch approval</p>
+        </div>
+
+        <form id="signup-form">
+          <div class="form-group">
+            <label for="signup-name">Full Name</label>
+            <input type="text" id="signup-name" class="form-control" placeholder="Suresh Sharma" style="padding-left: 16px;" required>
+          </div>
+
+          <div class="form-group">
+            <label for="signup-phone">Mobile Number</label>
+            <input type="tel" id="signup-phone" class="form-control" placeholder="+91 98765 43210" style="padding-left: 16px;" required>
+          </div>
+
+          <div class="form-group">
+            <label for="signup-password">Password</label>
+            <input type="password" id="signup-password" class="form-control" placeholder="••••••••" style="padding-left: 16px;" required>
+          </div>
+
+          <div class="form-group">
+            <label for="signup-confirm-password">Confirm Password</label>
+            <input type="password" id="signup-confirm-password" class="form-control" placeholder="••••••••" style="padding-left: 16px;" required>
+          </div>
+
+          <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">
+            SUBMIT FOR APPROVAL
+          </button>
+        </form>
+
+        <div class="auth-footer-links" style="margin-top: 16px; padding-top: 12px;">
+          <div>Already registered? <a href="#" id="show-login-from-signup" class="auth-link">Return to login</a></div>
+        </div>
+      </div>
+
+      <!-- STEP 2: FORGOT PASSWORD - ENTER PHONE -->
+      <div id="forgot-step-1" style="display: none;">
+        <div style="text-align: center;">
+          <h2 class="auth-header-title">Reset Password</h2>
+          <p class="auth-header-subtitle">Step 1: Enter your registered mobile number</p>
+        </div>
+
+        <div class="form-group" style="margin-top: 16px;">
+          <label for="forgot-phone">Mobile Number</label>
+          <input type="tel" id="forgot-phone" class="form-control" placeholder="+91 98765 43210" style="padding-left: 16px;" required>
+        </div>
+
+        <button id="btn-forgot-step1" class="btn-primary" style="width: 100%; margin-top: 14px;">
+          SEND VERIFICATION OTP
+        </button>
+
+        <div class="auth-footer-links" style="margin-top: 16px; padding-top: 12px;">
+          <a href="#" id="cancel-forgot-btn" class="auth-link">Cancel & Return to Login</a>
+        </div>
+      </div>
+
+      <!-- STEP 3: FORGOT PASSWORD - ENTER 6-DIGIT OTP -->
+      <div id="forgot-step-2" style="display: none;">
+        <div style="text-align: center;">
+          <h2 class="auth-header-title">Security Verification</h2>
+          <p class="auth-header-subtitle">Step 2: Enter 6-digit OTP sent to your phone</p>
+          <small id="otp-demo-hint" style="color: var(--text-secondary); display: block; margin-top: 4px;">Enter the verification code sent to your phone.</small>
+        </div>
+
+        <div class="otp-container" style="margin: 20px 0;">
+          <input type="text" maxlength="6" class="otp-field" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" aria-label="OTP digit 1">
+          <input type="text" maxlength="6" class="otp-field" inputmode="numeric" pattern="[0-9]*" aria-label="OTP digit 2">
+          <input type="text" maxlength="6" class="otp-field" inputmode="numeric" pattern="[0-9]*" aria-label="OTP digit 3">
+          <input type="text" maxlength="6" class="otp-field" inputmode="numeric" pattern="[0-9]*" aria-label="OTP digit 4">
+          <input type="text" maxlength="6" class="otp-field" inputmode="numeric" pattern="[0-9]*" aria-label="OTP digit 5">
+          <input type="text" maxlength="6" class="otp-field" inputmode="numeric" pattern="[0-9]*" aria-label="OTP digit 6">
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <span class="otp-timer" id="otp-countdown">30s</span>
+          <button id="resend-otp-btn" class="auth-link" style="font-size: 0.85rem;" disabled>Resend Code</button>
+        </div>
+
+        <button id="btn-forgot-step2" class="btn-primary" style="width: 100%;">
+          VERIFY OTP CODE
+        </button>
+      </div>
+
+      <!-- STEP 4: FORGOT PASSWORD - NEW PASSWORD -->
+      <div id="forgot-step-3" style="display: none;">
+        <div style="text-align: center;">
+          <h2 class="auth-header-title">Set New Password</h2>
+          <p class="auth-header-subtitle">Step 3: Create a strong new password</p>
+        </div>
+
+        <div class="form-group" style="margin-top: 16px;">
+          <label for="new-password">New Password</label>
+          <input type="password" id="new-password" class="form-control" placeholder="New Password" style="padding-left: 16px;" required>
+        </div>
+
+        <div class="form-group">
+          <label for="confirm-new-password">Confirm New Password</label>
+          <input type="password" id="confirm-new-password" class="form-control" placeholder="Confirm New Password" style="padding-left: 16px;" required>
+        </div>
+
+        <button id="btn-forgot-step3" class="btn-primary" style="width: 100%; margin-top: 10px;">
+          UPDATE PASSWORD
+        </button>
+      </div>
+
+      <!-- Bottom Card Edge Status Line -->
+      <div class="card-status-footer">
+        <span class="status-live-green">● System online</span>
+        <span>·</span>
+        <span>Chennai Control</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

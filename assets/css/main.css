@@ -1,0 +1,372 @@
+/* ==========================================================================
+   ARS - Disaster Rescue & SOS Management System
+   Main Design System & CSS Variables (/assets/css/main.css)
+   Aesthetic: "Rescue Radar" Control System
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Poppins:wght@700;800;900&display=swap');
+
+/* --- Rescue Radar Theme Palette & Tokens --- */
+:root {
+  /* Core Radar Palette */
+  --radar-navy: #070D1A;         /* Page background */
+  --panel-navy: #0F1A2E;         /* Cards and containers */
+  --grid-line: #1C2B47;          /* Borders and radar grid lines */
+  --siren-red: #E10600;          /* SIGNAL ONLY: buttons, alerts, High severity */
+  --siren-red-glow: rgba(225, 6, 0, 0.35);
+  --siren-red-hover: #C00500;
+
+  /* Severity Palette */
+  --severity-high: #E10600;
+  --severity-high-glow: rgba(225, 6, 0, 0.4);
+  --severity-medium: #FF8A00;
+  --severity-medium-glow: rgba(255, 138, 0, 0.4);
+  --severity-low: #FFD60A;
+  --severity-low-glow: rgba(255, 214, 10, 0.4);
+
+  /* Safe / On Duty Radar Teal-Green */
+  --status-on-duty: #19D3A2;
+  --status-on-duty-glow: rgba(25, 211, 162, 0.3);
+  --status-off-duty: #6B7280;
+  --status-on-case: #E10600;
+
+  /* Text & Signal White */
+  --signal-white: #F5F7FA;
+  --text-primary: #F5F7FA;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
+  /* Fonts */
+  --font-heading: 'Poppins', sans-serif;
+  --font-body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Shapes & Geometry */
+  --radius-squircle: 24px;
+  --radius-card: 20px;
+  --radius-pill: 9999px;
+  --radius-sm: 12px;
+
+  /* Transition Speeds */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Elevation Shadows */
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --shadow-red-glow: 0 0 20px rgba(225, 6, 0, 0.4);
+  --shadow-radar-teal: 0 0 16px rgba(25, 211, 162, 0.3);
+}
+
+/* --- Theme Variable Overrides --- */
+[data-theme="dark"], body {
+  --bg-app: var(--radar-navy);
+  --bg-surface: var(--panel-navy);
+  --bg-surface-elevated: #16243E;
+  --bg-card: var(--panel-navy);
+  --bg-input: #0A1324;
+  --border-color: var(--grid-line);
+  --border-color-hover: rgba(225, 6, 0, 0.5);
+
+  --topbar-bg: rgba(15, 26, 46, 0.9);
+  --sidebar-bg: var(--panel-navy);
+  --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="light"] {
+  --bg-app: #F0F4F8;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --bg-input: #F1F5F9;
+  --border-color: #CBD5E1;
+  --border-color-hover: rgba(225, 6, 0, 0.5);
+
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+
+  --sidebar-bg: var(--panel-navy); /* Control Room Sidebar remains dark panel for high contrast */
+  --topbar-bg: rgba(255, 255, 255, 0.95);
+  --card-shadow: 0 4px 20px rgba(15, 23, 42, 0.1);
+}
+
+/* --- Reset & Base Styles --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-body);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Focus Ring Accessibility */
+:focus-visible {
+  outline: 3px solid var(--siren-red);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* --- Scrollbar Styling --- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--siren-red);
+}
+
+/* --- Typography Helpers --- */
+.font-heading {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* --- Siren Lamp & Severity Badges --- */
+.severity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+}
+
+.siren-lamp-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+}
+
+.severity-high {
+  color: #FF4D4D;
+  border-color: rgba(225, 6, 0, 0.4);
+  background: rgba(225, 6, 0, 0.12);
+}
+.severity-high .siren-lamp-dot {
+  background-color: var(--severity-high);
+  box-shadow: 0 0 10px var(--severity-high), 0 0 20px var(--severity-high);
+  animation: sirenLampFlash 1s infinite alternate;
+}
+
+.severity-medium {
+  color: #FFB04D;
+  border-color: rgba(255, 138, 0, 0.4);
+  background: rgba(255, 138, 0, 0.12);
+}
+.severity-medium .siren-lamp-dot {
+  background-color: var(--severity-medium);
+  box-shadow: 0 0 8px var(--severity-medium);
+  animation: sirenLampFlash 1.8s infinite alternate;
+}
+
+.severity-low {
+  color: #FFE566;
+  border-color: rgba(255, 214, 10, 0.4);
+  background: rgba(255, 214, 10, 0.12);
+}
+.severity-low .siren-lamp-dot {
+  background-color: var(--severity-low);
+  box-shadow: 0 0 6px var(--severity-low);
+  animation: sirenLampFlash 2.5s infinite alternate;
+}
+
+@keyframes sirenLampFlash {
+  0% { opacity: 0.4; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1.15); }
+}
+
+/* --- Rescuer Status Chips (Teal-Green for On Duty) --- */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-on_duty {
+  background: rgba(25, 211, 162, 0.15);
+  color: var(--status-on-duty);
+  border: 1px solid rgba(25, 211, 162, 0.35);
+}
+.status-on_duty .status-chip-dot {
+  background: var(--status-on-duty);
+  box-shadow: 0 0 8px var(--status-on-duty);
+}
+
+.status-off_duty {
+  background: rgba(107, 114, 128, 0.15);
+  color: #9CA3AF;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+.status-off_duty .status-chip-dot {
+  background: var(--status-off-duty);
+}
+
+.status-on_case {
+  background: rgba(225, 6, 0, 0.15);
+  color: #FCA5A5;
+  border: 1px solid rgba(225, 6, 0, 0.3);
+}
+.status-on_case .status-chip-dot {
+  background: var(--status-on-case);
+  box-shadow: 0 0 8px var(--status-on-case);
+}
+
+/* --- Common Squircle Cards & Signal Buttons --- */
+.squircle-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-squircle);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-radius: var(--radius-squircle);
+  background: var(--siren-red);
+  color: #FFFFFF;
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 16px rgba(225, 6, 0, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover {
+  background: var(--siren-red-hover);
+  box-shadow: 0 6px 22px rgba(225, 6, 0, 0.55);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-outline-squircle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-squircle);
+  border: 1.5px solid rgba(225, 6, 0, 0.5);
+  color: var(--text-primary);
+  font-weight: 600;
+  transition: all var(--transition-fast);
+  background: transparent;
+}
+
+.btn-outline-squircle:hover {
+  background: var(--siren-red);
+  color: #FFFFFF;
+  border-color: var(--siren-red);
+  box-shadow: 0 4px 14px rgba(225, 6, 0, 0.4);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-squircle);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-color-hover);
+}
+
+/* Toast Notifications Container */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 380px;
+}
+
+/* Reduced Motion Compliance */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

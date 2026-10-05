@@ -72,7 +72,7 @@ In development, `SMS_PROVIDER=console` prints the reset OTP to the server termin
 
 ### Google Maps
 
-Set the browser key in `assets/js/config.js` for rendering maps and drawing dashboard routes. Set `GOOGLE_GEOCODING_KEY` in `.env` if SOS creation should resolve coordinates to a human-readable address server-side. Enable Maps JavaScript API, Routes API for in-dashboard directions, and Geocoding API for reverse geocoding as needed. Restrict keys to the required APIs and origins.
+For interactive maps and in-dashboard directions, add a Google Maps browser key locally to `GOOGLE_MAPS_API_KEY` in `assets/js/config.js`. Restrict it to the required APIs and allowed website origins, and never commit a real key. Set `GOOGLE_GEOCODING_KEY` in `.env` if SOS creation should resolve coordinates to a human-readable address server-side. Enable Maps JavaScript API, Routes API for in-dashboard directions, and Geocoding API for reverse geocoding as needed.
 
 ## Validation and behavior
 

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARS - Disaster Rescue & SOS Management</title>
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/app-state.js"></script>
+</head>
+<body>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const user = window.ARS_State.getCurrentUser();
+      if (user) {
+        if (user.role === 'admin') {
+          window.location.href = 'admin/index.html';
+        } else {
+          window.location.href = 'rescuer/index.html';
+        }
+      } else {
+        window.location.href = 'login/index.html';
+      }
+    });
+  </script>
+</body>
+</html>

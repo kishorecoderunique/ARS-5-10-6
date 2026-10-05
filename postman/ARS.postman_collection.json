@@ -1,0 +1,51 @@
+{
+  "info": {
+    "name": "ARS Backend API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "token", "value": "" },
+    { "key": "sosId", "value": "" },
+    { "key": "notificationId", "value": "" },
+    { "key": "rescuerId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        { "name": "Login", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"phone\":\"9000000001\",\"password\":\"ARSAdmin2026!\",\"role\":\"admin\"}" }, "url": "{{baseUrl}}/api/auth/login" } },
+        { "name": "Signup rescuer", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"New Rescuer\",\"phone\":\"9001234567\",\"password\":\"StrongPass2026!\"}" }, "url": "{{baseUrl}}/api/auth/signup" } },
+        { "name": "Me", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/auth/me" } },
+        { "name": "Request reset OTP", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"phone\":\"9000000001\"}" }, "url": "{{baseUrl}}/api/auth/forgot/request-otp" } },
+        { "name": "Verify reset OTP", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"phone\":\"9000000001\",\"otp\":\"123456\"}" }, "url": "{{baseUrl}}/api/auth/forgot/verify-otp" } },
+        { "name": "Reset password", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"phone\":\"9000000001\",\"otp\":\"123456\",\"password\":\"NewStrongPass2026!\"}" }, "url": "{{baseUrl}}/api/auth/forgot/reset-password" } },
+        { "name": "Approve rescuer", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/admin/rescuers/{{rescuerId}}/approve" } },
+        { "name": "Reject rescuer", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/admin/rescuers/{{rescuerId}}/reject" } }
+      ]
+    },
+    {
+      "name": "SOS",
+      "item": [
+        { "name": "Create SOS", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"victimName\":\"Test Caller\",\"victimPhone\":\"9001234567\",\"lat\":13.04,\"lng\":80.24,\"severity\":\"High\",\"description\":\"Emergency assistance required.\"}" }, "url": "{{baseUrl}}/api/sos" } },
+        { "name": "List SOS", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/sos?status=pending" } },
+        { "name": "Filter by severity", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/sos?severity=High" } },
+        { "name": "My SOS", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/sos/mine" } },
+        { "name": "Accept SOS", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/sos/{{sosId}}/accept" } },
+        { "name": "Advance status", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"status\":\"en_route\"}" }, "url": "{{baseUrl}}/api/sos/{{sosId}}/status" } }
+      ]
+    },
+    {
+      "name": "Admin and notifications",
+      "item": [
+        { "name": "Rescuers", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/admin/rescuers" } },
+        { "name": "Stats", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/admin/stats" } },
+        { "name": "Assign SOS", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"rescuerId\":\"{{rescuerId}}\"}" }, "url": "{{baseUrl}}/api/admin/sos/{{sosId}}/assign" } },
+        { "name": "Notifications", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/notifications" } },
+        { "name": "Mark notification read", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/notifications/{{notificationId}}/read" } },
+        { "name": "Mark all notifications read", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/notifications/read-all" } },
+        { "name": "Duty", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"duty\":\"on\"}" }, "url": "{{baseUrl}}/api/users/duty" } }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARS - Emergency SOS Simulator</title>
+  <link rel="icon" type="image/png" href="../assets/logo.png">
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/auth.css">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/api.js?v=4"></script>
+  <script src="../assets/js/app-state.js"></script>
+</head>
+<body style="background-color: var(--bg-app); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px;">
+  <div class="auth-card" style="max-width: 520px; border-color: rgba(225, 6, 0, 0.5); box-shadow: var(--shadow-red-glow);">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <img src="../assets/logo.png" alt="ARS Logo" style="width: 70px; height: 70px; margin-bottom: 12px;">
+      <h1 class="font-heading" style="font-size: 1.6rem; margin-bottom: 4px;">Victim Emergency SOS Simulator</h1>
+      <p style="color: var(--text-secondary); font-size: 0.9rem;">Trigger a real-time rescue dispatch signal across active control room dashboards.</p>
+    </div>
+
+    <div id="trigger-alert" class="alert-message"></div>
+
+    <form id="trigger-sos-form">
+      <div class="form-group">
+        <label for="victim-name">Victim Full Name</label>
+        <input type="text" id="victim-name" class="form-control" placeholder="Subhashini Nathan" style="padding-left: 16px;" required>
+      </div>
+
+      <div class="form-group">
+        <label for="victim-phone">Phone Number</label>
+        <input type="tel" id="victim-phone" class="form-control" placeholder="+91 97908 11223" style="padding-left: 16px;" required>
+      </div>
+
+      <div class="form-group">
+        <label>Victim GPS Location</label>
+        <button type="button" id="get-current-location-btn" class="btn-secondary" style="width: 100%; padding: 10px 16px;">📍 Get Current GPS Location</button>
+        <div id="gps-location-status" role="status" style="margin-top: 6px; color: var(--text-secondary); font-size: 0.82rem;">Your device location is required to send this SOS.</div>
+      </div>
+
+      <div style="display: flex; gap: 12px;">
+        <div class="form-group" style="flex: 1;">
+          <label for="custom-lat">Latitude</label>
+          <input type="number" step="any" id="custom-lat" class="form-control" placeholder="Retrieved from device GPS" style="padding-left: 16px; font-family: var(--font-mono);" readonly required>
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label for="custom-lng">Longitude</label>
+          <input type="number" step="any" id="custom-lng" class="form-control" placeholder="Retrieved from device GPS" style="padding-left: 16px; font-family: var(--font-mono);" readonly required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="sos-severity">Emergency Severity Level</label>
+        <select id="sos-severity" class="form-control" style="padding-left: 16px;" required>
+          <option value="high" selected>🔴 HIGH (Immediate Life Threat / Flooding / Collapse)</option>
+          <option value="medium">🟠 MEDIUM (Trapped / Vehicle Breakdown / Waterlogging)</option>
+          <option value="low">🟡 LOW (Water Pack Request / Minor Assist)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="sos-desc">Emergency Details & Request Description</label>
+        <textarea id="sos-desc" class="form-control" style="padding-left: 16px; min-height: 80px;" placeholder="Describe emergency situation..." required>Rising flood waters, immediate rescue boat dispatch required.</textarea>
+      </div>
+
+      <button type="submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem; box-shadow: var(--shadow-red-glow);">
+        🚨 BROADCAST DISTRESS SOS SIGNAL
+      </button>
+    </form>
+
+    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 0.85rem;">
+      <a href="../rescuer/index.html" class="auth-link">← Go to Rescuer Dashboard</a>
+      <a href="../admin/index.html" class="auth-link">Go to Admin Dashboard →</a>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const latInput = document.getElementById('custom-lat');
+      const lngInput = document.getElementById('custom-lng');
+      const form = document.getElementById('trigger-sos-form');
+      const alertContainer = document.getElementById('trigger-alert');
+      const locationButton = document.getElementById('get-current-location-btn');
+      const locationStatus = document.getElementById('gps-location-status');
+
+      function getCurrentPosition() {
+        if (!navigator.geolocation) {
+          return Promise.reject(new Error('This browser does not support GPS location.'));
+        }
+        return new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            resolve,
+            error => {
+              const message = error.code === error.PERMISSION_DENIED
+                ? 'Location permission was denied. Allow location access and try again.'
+                : error.code === error.TIMEOUT
+                  ? 'Could not get your GPS location in time. Please try again.'
+                  : 'Your current GPS location is unavailable. Please try again.';
+              reject(new Error(message));
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+          );
+        });
+      }
+
+      async function refreshGpsLocation() {
+        locationStatus.textContent = 'Getting your current GPS location...';
+        const position = await getCurrentPosition();
+        latInput.value = String(position.coords.latitude);
+        lngInput.value = String(position.coords.longitude);
+        locationStatus.textContent = 'Current GPS location retrieved.';
+        return position;
+      }
+
+      locationButton.addEventListener('click', async () => {
+        locationButton.disabled = true;
+        try {
+          await refreshGpsLocation();
+        } catch (error) {
+          locationStatus.textContent = error.message;
+        } finally {
+          locationButton.disabled = false;
+        }
+      });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const victimName = document.getElementById('victim-name').value.trim();
+        const victimPhone = document.getElementById('victim-phone').value.trim();
+        const severity = document.getElementById('sos-severity').value;
+        const description = document.getElementById('sos-desc').value.trim();
+
+        try {
+          const position = await refreshGpsLocation();
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const response = await window.ARS_API.request('/sos', {
+            method: 'POST',
+            body: {
+              victimName,
+              victimPhone,
+              lat,
+              lng,
+              locationName: 'Current GPS location',
+              severity: severity[0].toUpperCase() + severity.slice(1),
+              description
+            }
+          });
+          alertContainer.className = 'alert-message active alert-success';
+          alertContainer.textContent = `🚨 SOS Signal ${response.sos.id} broadcast successfully. Open the dashboards to see the live update.`;
+        } catch (error) {
+          locationStatus.textContent = error.message;
+          alertContainer.className = 'alert-message active alert-error';
+          alertContainer.textContent = error.message;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
