@@ -53,7 +53,7 @@ The commands below use `npm.cmd` for Windows PowerShell. In Command Prompt, macO
 
 ### Deploy to Vercel
 
-The project includes a Vercel Node.js entry point at [`server.js`](./server.js). Connect the GitHub repository to Vercel and set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `JWT_SECRET` for Production in the Vercel project settings. The app uses Vercel's assigned production domain for CORS by default; if you use a custom domain, also set `FRONTEND_URL` to its origin (for example, `https://your-domain.com`). Then deploy the latest commit. Do not set `LOCAL_DEMO_MODE=true` in Vercel. The entry point includes the static frontend, API, and Socket.IO server in the Vercel function.
+The project includes a Vercel Express entry point at [`server.js`](./server.js). Its build command copies the existing frontend files into `public/` so Vercel can serve them as static assets, while API requests are handled by Express. Connect this GitHub repository to Vercel and set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `JWT_SECRET` for Production in the Vercel project settings. The app uses Vercel's assigned production domain for CORS by default; if you use a custom domain, also set `FRONTEND_URL` to its origin (for example, `https://your-domain.com`). Then deploy the latest commit. Do not set `LOCAL_DEMO_MODE=true` in Vercel.
 
 ## API and real-time updates
 

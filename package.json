@@ -4,6 +4,7 @@
   "private": true,
   "description": "ARS disaster rescue and SOS management application",
   "scripts": {
+    "build": "node scripts/build-vercel.js",
     "start": "node backend/server.js",
     "dev": "node backend/server.js",
     "seed": "node backend/seed/seed.js",

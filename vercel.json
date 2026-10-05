@@ -1,7 +1,3 @@
 {
-  "functions": {
-    "server.js": {
-      "includeFiles": "{assets/**,data/**,index.html,login/**,admin/**,rescuer/**,trigger-sos/**}"
-    }
-  }
+  "buildCommand": "npm run build"
 }
