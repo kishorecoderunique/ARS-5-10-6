@@ -10,4 +10,10 @@ if (!process.env.FRONTEND_URL) {
 const { loadEnv } = require('./backend/config/env');
 const { createApplication } = require('./backend/server');
 
-module.exports = createApplication(loadEnv());
+const express = require('express');
+const backendServer = createApplication(loadEnv());
+const app = express();
+
+app.use(backendServer.app);
+
+module.exports = app;

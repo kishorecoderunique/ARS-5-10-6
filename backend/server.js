@@ -17,6 +17,7 @@ function createApplication(config = loadEnv()) {
   const io = new Server(server, {
     cors: { origin: config.frontendUrl, methods: ['GET', 'POST', 'PATCH'] }
   });
+  server.app = app;
   app.locals.config = config;
   app.set('io', io);
   configureSockets(io, config.jwtSecret, config);
