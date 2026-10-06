@@ -15,7 +15,7 @@ window.ARS_CONFIG = {
     ? 'http://localhost:5000/api'
     : '/api',
 
-  GOOGLE_MAPS_API_KEY: '',
+  GOOGLE_MAPS_API_KEY: 'AIzaSyCJGFFTUxsfI4t3rAjkIGB4yRXCT4tbqsI',
 
   // Default Map Center (Chennai, Tamil Nadu)
   DEFAULT_MAP_CENTER: {

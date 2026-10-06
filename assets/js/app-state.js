@@ -56,6 +56,12 @@ window.ARS_State = (function () {
         rescuers = rescuersResponse.rescuers.map(rescuer => ({
           ...rescuer,
           id: String(rescuer.id || rescuer._id),
+          email: rescuer.email || `${rescuer.name ? rescuer.name.toLowerCase().replace(/\s+/g, '.') : rescuer.phone}@ars.rescuers.org`,
+          skills: rescuer.skills || 'Search & Medical Rescue',
+          location: rescuer.location || 'Chennai Sector',
+          appliedDate: rescuer.appliedDate || (rescuer.createdAt ? new Date(rescuer.createdAt).toISOString().split('T')[0] : '2026-01-15'),
+          approvedDate: rescuer.approvedDate || (rescuer.status === 'approved' ? (rescuer.updatedAt ? new Date(rescuer.updatedAt).toISOString().split('T')[0] : '2026-02-01') : 'Pending'),
+          documents: rescuer.documents || 'National_ID_Verified.pdf',
           status: rescuer.status === 'pending'
             ? 'pending_approval'
             : rescuer.status === 'rejected' ? 'rejected'
@@ -257,6 +263,9 @@ window.ARS_State = (function () {
       return action(`/admin/rescuers/${encodeURIComponent(id)}/approve`, { method: 'PATCH' });
     },
     rejectRescuer(id) {
+      return action(`/admin/rescuers/${encodeURIComponent(id)}/reject`, { method: 'PATCH' });
+    },
+    deactivateRescuer(id) {
       return action(`/admin/rescuers/${encodeURIComponent(id)}/reject`, { method: 'PATCH' });
     },
     reassignSos(id, rescuerId) {

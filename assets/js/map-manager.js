@@ -1,11 +1,15 @@
 /**
  * ARS - Disaster Rescue & SOS Management System
- * Dual Map Engine Manager (/assets/js/map-manager.js)
- * Rescue Radar Engine
+ * Multi-Engine Map Manager (/assets/js/map-manager.js)
+ * Supports Google Maps, Leaflet (OpenStreetMap/CartoDB), and Canvas Radar Fallback
  */
 
 window.ARS_MapManager = (function () {
   let googleMap = null;
+  let leafletMap = null;
+  let leafletMarkers = [];
+  let leafletPolylines = [];
+  let isLeafletLoading = false;
   let directionsRequestId = 0;
   let directionsPolylines = [];
   let directionsMarkers = [];
@@ -51,26 +55,9 @@ window.ARS_MapManager = (function () {
     if (apiKey && apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
       loadGoogleMapsScript(apiKey);
     } else {
-      console.warn("Google Maps API key is missing or placeholder.");
-      renderMapFailure();
+      console.info("Google Maps API key not set. Initializing Leaflet OpenStreetMap engine.");
+      loadLeafletMap();
     }
-  }
-
-  function renderMapFailure() {
-    const container = document.getElementById(mapContainerId);
-    if (!container) return;
-
-    mapUnavailable = true;
-    googleMap = null;
-    activeMarkers = [];
-    clearDirections();
-    fallbackCanvas = null;
-    if (mode === 'rescuer') {
-      container.innerHTML = '<div class="map-unavailable-message" role="status">Map unavailable. Add your Google Maps API key in config.js.</div>';
-      return;
-    }
-
-    renderFallbackMap();
   }
 
   function loadGoogleMapsScript(apiKey) {
@@ -83,8 +70,8 @@ window.ARS_MapManager = (function () {
     script.async = true;
     script.defer = true;
     script.onerror = () => {
-      console.error("Failed to load Google Maps script.");
-      renderMapFailure();
+      console.warn("Failed to load Google Maps script. Falling back to Leaflet.");
+      loadLeafletMap();
     };
     window.ARS_MapManager_onGoogleMapsLoaded = function () {
       if (mapUnavailable) return;
@@ -92,8 +79,8 @@ window.ARS_MapManager = (function () {
       renderGoogleMap();
     };
     window.gm_authFailure = function () {
-      console.error("Google Maps rejected the configured API key.");
-      renderMapFailure();
+      console.warn("Google Maps rejected key. Falling back to Leaflet.");
+      loadLeafletMap();
     };
     document.head.appendChild(script);
   }
@@ -117,7 +104,100 @@ window.ARS_MapManager = (function () {
     updateMarkers();
   }
 
-  // Fallback Canvas Map
+  // --- Leaflet OpenStreetMap Engine ---
+  function loadLeafletMap() {
+    if (window.L && window.L.map) {
+      renderLeafletMap();
+      return;
+    }
+
+    if (!document.querySelector('link[href*="leaflet"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+
+    if (!isLeafletLoading) {
+      isLeafletLoading = true;
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.onload = () => {
+        isLeafletLoading = false;
+        renderLeafletMap();
+      };
+      script.onerror = () => {
+        isLeafletLoading = false;
+        console.warn("Leaflet script failed to load. Using interactive radar canvas fallback.");
+        renderFallbackMap();
+      };
+      document.head.appendChild(script);
+    }
+  }
+
+  function renderLeafletMap() {
+    const container = document.getElementById(mapContainerId);
+    if (!container) return;
+
+    container.innerHTML = '';
+    const center = window.ARS_CONFIG ? (window.ARS_CONFIG.DEFAULT_MAP_CENTER || { lat: 13.0400, lng: 80.2400 }) : { lat: 13.0400, lng: 80.2400 };
+    const zoom = window.ARS_CONFIG ? (window.ARS_CONFIG.DEFAULT_ZOOM || 12) : 12;
+
+    if (leafletMap) {
+      try { leafletMap.remove(); } catch (e) {}
+      leafletMap = null;
+    }
+
+    try {
+      leafletMap = L.map(mapContainerId, {
+        center: [center.lat, center.lng],
+        zoom: zoom,
+        zoomControl: true,
+        attributionControl: true
+      });
+
+      const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+      });
+
+      const osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      });
+
+      cartoDark.addTo(leafletMap);
+      cartoDark.on('tileerror', () => {
+        if (leafletMap && !leafletMap.hasLayer(osmStandard)) {
+          osmStandard.addTo(leafletMap);
+        }
+      });
+
+      updateMarkers();
+    } catch (err) {
+      console.error("Failed to render Leaflet map:", err);
+      renderFallbackMap();
+    }
+  }
+
+  function clearLeafletMarkers() {
+    leafletMarkers.forEach(item => {
+      if (item.marker && leafletMap) {
+        try { leafletMap.removeLayer(item.marker); } catch (e) {}
+      }
+    });
+    leafletMarkers = [];
+
+    leafletPolylines.forEach(line => {
+      if (line && leafletMap) {
+        try { leafletMap.removeLayer(line); } catch (e) {}
+      }
+    });
+    leafletPolylines = [];
+  }
+
+  // --- Fallback Canvas Map ---
   function renderFallbackMap() {
     const container = document.getElementById(mapContainerId);
     if (!container) return;
@@ -197,7 +277,6 @@ window.ARS_MapManager = (function () {
     ctx.fillStyle = '#070D1A';
     ctx.fillRect(0, 0, width, height);
 
-    // Radar Grid Lines
     ctx.strokeStyle = '#1C2B47';
     ctx.lineWidth = 1;
     const gridSize = 45;
@@ -214,7 +293,6 @@ window.ARS_MapManager = (function () {
       ctx.stroke();
     }
 
-    // Bay of Bengal Coastline SVG path styling
     ctx.fillStyle = '#040812';
     ctx.beginPath();
     ctx.moveTo(width * 0.78, 0);
@@ -227,7 +305,6 @@ window.ARS_MapManager = (function () {
     const sosList = window.ARS_State ? window.ARS_State.getSortedSosList() : [];
     const rescuers = window.ARS_State ? window.ARS_State.getRescuers() : [];
 
-    // Admin Connecting Lines
     if (mode === 'admin') {
       rescuers.forEach(r => {
         if (r.status === 'on_case' && r.assignedSosId) {
@@ -249,7 +326,6 @@ window.ARS_MapManager = (function () {
       });
     }
 
-    // Rescuer Pins (Safe Teal-Green for On Duty)
     if (mode === 'admin') {
       rescuers.forEach(r => {
         if (r.status !== 'off_duty' && r.status !== 'pending_approval' && Number.isFinite(Number(r.lat)) && Number.isFinite(Number(r.lng))) {
@@ -265,14 +341,12 @@ window.ARS_MapManager = (function () {
       });
     }
 
-    // Draw SOS Pins with 3 Expanding Pulse Rings
     sosList.forEach(sos => {
       const pt = latLngToCanvas(sos.lat, sos.lng, width, height);
       const colors = { high: '#E10600', medium: '#FF8A00', low: '#FFD60A' };
       const color = colors[sos.severity] || '#E10600';
       const speedMultiplier = sos.severity === 'high' ? 1.5 : (sos.severity === 'medium' ? 1.0 : 0.6);
 
-      // Faint Radar Ring for Selected SOS Pin
       if (sos.id === highlightedSosId) {
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 28, 0, Math.PI * 2);
@@ -283,7 +357,6 @@ window.ARS_MapManager = (function () {
         ctx.setLineDash([]);
       }
 
-      // 3 Pulse Rings
       for (let i = 0; i < 3; i++) {
         const ringProgress = (pulseTick * speedMultiplier + i * 0.33) % 1;
         const radius = 8 + ringProgress * 24;
@@ -296,7 +369,6 @@ window.ARS_MapManager = (function () {
         ctx.stroke();
       }
 
-      // Pin Core
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
       ctx.fillStyle = color;
@@ -366,13 +438,13 @@ window.ARS_MapManager = (function () {
     const lng = Number(sos.lng);
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
     container.innerHTML = `
-      <div style="font-weight:800; margin:10px 0 6px;">🚨 VICTIM LOCATION</div>
-      <div style="font-size:0.85rem; margin-bottom:4px;">📍 Full Address:</div>
+      <div style="font-weight:800; margin:10px 0 6px; font-size:0.88rem;">🚨 VICTIM LOCATION</div>
+      <div style="font-size:0.82rem; margin-bottom:4px; color:#94A3B8;">📍 Address:</div>
       <div style="font-size:0.84rem; color:#E2E8F0; overflow-wrap:anywhere;">${escapeHtml(address)}</div>
       ${provider === 'openstreetmap' ? '<div style="font-size:0.68rem; color:#94A3B8; margin-top:3px;">© OpenStreetMap contributors</div>' : ''}
-      <div style="font-size:0.82rem; margin-top:8px;">🌐 Coordinates:</div>
-      <div style="font-family:var(--font-mono); font-size:0.75rem; color:#CBD5E1;">Latitude: ${escapeHtml(String(sos.lat))}<br>Longitude: ${escapeHtml(String(sos.lng))}</div>
-      <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top:10px; padding:7px 10px; border-radius:8px; background:#E10600; color:#fff; text-decoration:none; font-size:0.75rem; font-weight:700;">OPEN IN MAPS</a>
+      <div style="font-size:0.82rem; margin-top:8px; color:#94A3B8;">🌐 Coordinates:</div>
+      <div style="font-family:var(--font-mono); font-size:0.75rem; color:#CBD5E1;">Lat: ${escapeHtml(String(sos.lat))}<br>Lng: ${escapeHtml(String(sos.lng))}</div>
+      <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top:10px; padding:7px 12px; border-radius:8px; background:#E10600; color:#fff; text-decoration:none; font-size:0.75rem; font-weight:700;">OPEN IN GOOGLE MAPS</a>
     `;
   }
 
@@ -386,11 +458,11 @@ window.ARS_MapManager = (function () {
   }
 
   function updateMarkers() {
+    const sosList = window.ARS_State ? window.ARS_State.getSortedSosList() : [];
+    const rescuers = window.ARS_State ? window.ARS_State.getRescuers() : [];
+
     if (googleMap) {
       clearGoogleMapMarkers();
-
-      const sosList = window.ARS_State ? window.ARS_State.getSortedSosList() : [];
-      const rescuers = window.ARS_State ? window.ARS_State.getRescuers() : [];
 
       sosList.forEach(sos => {
         const markerColor = sos.severity === 'high' ? '#E10600' : (sos.severity === 'medium' ? '#FF8A00' : '#FFD60A');
@@ -449,7 +521,7 @@ window.ARS_MapManager = (function () {
 
       if (mode === 'admin') {
         rescuers.forEach(r => {
-          if (r.status !== 'off_duty' && r.status !== 'pending_approval') {
+          if (r.status !== 'off_duty' && r.status !== 'pending_approval' && Number.isFinite(Number(r.lat)) && Number.isFinite(Number(r.lng))) {
             const rMarker = new google.maps.Marker({
               position: { lat: r.lat, lng: r.lng },
               map: googleMap,
@@ -482,6 +554,102 @@ window.ARS_MapManager = (function () {
           }
         });
       }
+    } else if (leafletMap && window.L) {
+      clearLeafletMarkers();
+
+      sosList.forEach(sos => {
+        if (!Number.isFinite(Number(sos.lat)) || !Number.isFinite(Number(sos.lng))) return;
+        const markerColor = sos.severity === 'high' ? '#E10600' : (sos.severity === 'medium' ? '#FF8A00' : '#FFD60A');
+        const escapeHtml = window.ARS_State.escapeHtml;
+
+        const customIcon = L.divIcon({
+          className: 'ars-leaflet-marker',
+          html: `<div class="sos-marker-pulse severity-${sos.severity}" style="
+            width: 22px; height: 22px; border-radius: 50%;
+            background: ${markerColor}; border: 2.5px solid #ffffff;
+            box-shadow: 0 0 12px ${markerColor};
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+          "><div style="width: 7px; height: 7px; background: #ffffff; border-radius: 50%;"></div></div>`,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        });
+
+        const marker = L.marker([sos.lat, sos.lng], { icon: customIcon }).addTo(leafletMap);
+
+        marker.on('click', () => {
+          highlightedSosId = sos.id;
+          const lookupId = ++locationLookupId;
+          const content = document.createElement('div');
+          renderVictimLocation(content, sos, '📍 Getting victim address...');
+
+          marker.bindPopup(`
+            <div style="color:#F5F7FA; font-family:sans-serif; padding:4px; width:260px;">
+              <div style="font-weight:800; font-size:1.05rem; font-family:var(--font-heading);">${escapeHtml(sos.victimName)}</div>
+              <div style="font-family:var(--font-mono); color:#9CA3AF; font-size:0.85rem; margin-bottom:6px;">${escapeHtml(sos.phone)}</div>
+              <div class="victim-loc-body">${content.innerHTML}</div>
+            </div>
+          `, { maxWidth: 300 }).openPopup();
+
+          lookupVictimAddress(sos).then(result => {
+            if (lookupId !== locationLookupId) return;
+            const addressContent = document.createElement('div');
+            renderVictimLocation(addressContent, {
+              ...sos,
+              lat: result?.lat ?? sos.lat,
+              lng: result?.lng ?? sos.lng
+            }, result?.address || '⚠️ Address unavailable', result?.provider);
+
+            const popupObj = marker.getPopup();
+            if (popupObj && popupObj.isOpen()) {
+              const popupEl = popupObj.getElement();
+              if (popupEl) {
+                const body = popupEl.querySelector('.victim-loc-body');
+                if (body) body.innerHTML = addressContent.innerHTML;
+              }
+            }
+          });
+
+          if (onMarkerClickCallback) onMarkerClickCallback(sos);
+        });
+
+        leafletMarkers.push({ id: sos.id, marker });
+      });
+
+      if (mode === 'admin') {
+        rescuers.forEach(r => {
+          if (r.status !== 'off_duty' && r.status !== 'pending_approval' && Number.isFinite(Number(r.lat)) && Number.isFinite(Number(r.lng))) {
+            const rIcon = L.divIcon({
+              className: 'ars-leaflet-marker',
+              html: `<div style="
+                width: 18px; height: 18px; border-radius: 50%;
+                background: ${r.status === 'on_case' ? '#E10600' : '#19D3A2'};
+                border: 2px solid #ffffff;
+                box-shadow: 0 0 10px ${r.status === 'on_case' ? '#E10600' : '#19D3A2'};
+              "></div>`,
+              iconSize: [18, 18],
+              iconAnchor: [9, 9]
+            });
+
+            const rMarker = L.marker([r.lat, r.lng], { icon: rIcon }).addTo(leafletMap);
+            rMarker.bindPopup(`<strong style="color:#F5F7FA;">Rescuer: ${window.ARS_State.escapeHtml(r.name)}</strong><br><span style="font-size:0.8rem; color:#94A3B8;">Status: ${r.status}</span>`);
+            leafletMarkers.push({ id: r.id, marker: rMarker });
+
+            if (r.status === 'on_case' && r.assignedSosId) {
+              const targetSos = sosList.find(s => s.id === r.assignedSosId);
+              if (targetSos && Number.isFinite(Number(targetSos.lat)) && Number.isFinite(Number(targetSos.lng))) {
+                const line = L.polyline([[r.lat, r.lng], [targetSos.lat, targetSos.lng]], {
+                  color: '#E10600',
+                  weight: 3,
+                  dashArray: '6, 6',
+                  opacity: 0.8
+                }).addTo(leafletMap);
+                leafletPolylines.push(line);
+              }
+            }
+          }
+        });
+      }
     }
   }
 
@@ -506,6 +674,12 @@ window.ARS_MapManager = (function () {
         found.marker.setAnimation(google.maps.Animation.BOUNCE);
         setTimeout(() => found.marker.setAnimation(null), 1800);
       }
+    } else if (leafletMap && window.L) {
+      leafletMap.setView([sos.lat, sos.lng], 15);
+      const found = leafletMarkers.find(m => m.id === sosId);
+      if (found && found.marker) {
+        found.marker.fire('click');
+      }
     } else if (fallbackCanvas) {
       const container = document.getElementById(mapContainerId);
       if (container) {
@@ -513,6 +687,17 @@ window.ARS_MapManager = (function () {
         showFallbackPopup(sos, pt.x, pt.y, container);
       }
     }
+  }
+
+  function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   }
 
   async function showDirectionsToSos(sosId) {
@@ -523,70 +708,112 @@ window.ARS_MapManager = (function () {
       return;
     }
 
-    if (!googleMap || !window.google || !window.google.maps) {
-      showDirectionsPanelMessage('Directions are unavailable until Google Maps is loaded.');
-      return;
-    }
+    if (googleMap && window.google && window.google.maps) {
+      const destination = { lat: Number(sos.lat), lng: Number(sos.lng) };
+      const requestId = ++directionsRequestId;
 
-    const destination = { lat: Number(sos.lat), lng: Number(sos.lng) };
-    const requestId = ++directionsRequestId;
+      showDirectionsPanelMessage('Getting your current location and finding the fastest driving route...');
+      clearDirections();
+      try {
+        const currentUser = window.ARS_State.getCurrentUser();
+        const rescuer = window.ARS_State.getRescuers().find(item => currentUser && item.id === currentUser.id);
+        const { origin, source } = await getRouteOrigin(rescuer);
+        if (requestId !== directionsRequestId) return;
 
-    showDirectionsPanelMessage('Getting your current location and finding the fastest driving route...');
-    clearDirections();
-    try {
-      const currentUser = window.ARS_State.getCurrentUser();
-      const rescuer = window.ARS_State.getRescuers().find(item => currentUser && item.id === currentUser.id);
-      const { origin, source } = await getRouteOrigin(rescuer);
-      if (requestId !== directionsRequestId) return;
-
-      const { Route } = await google.maps.importLibrary('routes');
-      const { routes } = await Route.computeRoutes({
-        origin,
-        destination,
-        travelMode: 'DRIVING',
-        routingPreference: 'TRAFFIC_AWARE_OPTIMAL',
-        computeAlternativeRoutes: true,
-        fields: ['path', 'viewport', 'legs', 'distanceMeters', 'durationMillis', 'staticDurationMillis']
-      });
-      if (requestId !== directionsRequestId) return;
-      if (!routes || routes.length === 0) {
-        showDirectionsPanelMessage('No driving route was found for this destination.', sos, origin);
-        return;
-      }
-
-      const route = [...routes].sort((a, b) =>
-        (a.durationMillis ?? a.legs?.[0]?.durationMillis ?? Number.MAX_SAFE_INTEGER) -
-        (b.durationMillis ?? b.legs?.[0]?.durationMillis ?? Number.MAX_SAFE_INTEGER)
-      )[0];
-      directionsPolylines = route.createPolylines();
-      directionsPolylines.forEach(polyline => {
-        polyline.setOptions({
-          strokeColor: '#19D3A2',
-          strokeOpacity: 0.9,
-          strokeWeight: 6
+        const { Route } = await google.maps.importLibrary('routes');
+        const { routes } = await Route.computeRoutes({
+          origin,
+          destination,
+          travelMode: 'DRIVING',
+          routingPreference: 'TRAFFIC_AWARE_OPTIMAL',
+          computeAlternativeRoutes: true,
+          fields: ['path', 'viewport', 'legs', 'distanceMeters', 'durationMillis', 'staticDurationMillis']
         });
-        polyline.setMap(googleMap);
-      });
-      if (route.viewport) googleMap.fitBounds(route.viewport);
-
-      directionsMarkers.push(new google.maps.Marker({
-        position: origin,
-        map: googleMap,
-        title: 'Rescuer starting point',
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: '#19D3A2',
-          fillOpacity: 1,
-          strokeColor: '#FFFFFF',
-          strokeWeight: 2
+        if (requestId !== directionsRequestId) return;
+        if (!routes || routes.length === 0) {
+          showDirectionsPanelMessage('No driving route was found for this destination.', sos, origin);
+          return;
         }
-      }));
-      renderDirectionsPanel(sos, route.legs && route.legs[0], origin, source);
-    } catch (error) {
-      if (requestId !== directionsRequestId) return;
-      console.error('Could not calculate the fastest route to the SOS.', error);
-      showDirectionsPanelMessage(error.message || 'Could not calculate a route. Open navigation in Google Maps instead.', sos);
+
+        const route = [...routes].sort((a, b) =>
+          (a.durationMillis ?? a.legs?.[0]?.durationMillis ?? Number.MAX_SAFE_INTEGER) -
+          (b.durationMillis ?? b.legs?.[0]?.durationMillis ?? Number.MAX_SAFE_INTEGER)
+        )[0];
+        directionsPolylines = route.createPolylines();
+        directionsPolylines.forEach(polyline => {
+          polyline.setOptions({
+            strokeColor: '#19D3A2',
+            strokeOpacity: 0.9,
+            strokeWeight: 6
+          });
+          polyline.setMap(googleMap);
+        });
+        if (route.viewport) googleMap.fitBounds(route.viewport);
+
+        directionsMarkers.push(new google.maps.Marker({
+          position: origin,
+          map: googleMap,
+          title: 'Rescuer starting point',
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: '#19D3A2',
+            fillOpacity: 1,
+            strokeColor: '#FFFFFF',
+            strokeWeight: 2
+          }
+        }));
+        renderDirectionsPanel(sos, route.legs && route.legs[0], origin, source);
+      } catch (error) {
+        if (requestId !== directionsRequestId) return;
+        console.error('Could not calculate the fastest route to the SOS.', error);
+        showDirectionsPanelMessage(error.message || 'Could not calculate a route. Open navigation in Google Maps instead.', sos);
+      }
+    } else if (leafletMap && window.L) {
+      const destination = { lat: Number(sos.lat), lng: Number(sos.lng) };
+      showDirectionsPanelMessage('Getting location and calculating route...');
+      clearDirections();
+
+      try {
+        const currentUser = window.ARS_State.getCurrentUser();
+        const rescuer = window.ARS_State.getRescuers().find(item => currentUser && item.id === currentUser.id);
+        const { origin, source } = await getRouteOrigin(rescuer);
+
+        const routeLine = L.polyline([[origin.lat, origin.lng], [destination.lat, destination.lng]], {
+          color: '#19D3A2',
+          weight: 5,
+          opacity: 0.9
+        }).addTo(leafletMap);
+        leafletPolylines.push(routeLine);
+
+        const startIcon = L.divIcon({
+          className: 'ars-leaflet-marker',
+          html: `<div style="width: 16px; height: 16px; border-radius: 50%; background: #19D3A2; border: 2px solid #fff; box-shadow: 0 0 8px #19D3A2;"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
+        });
+        const startMarker = L.marker([origin.lat, origin.lng], { icon: startIcon }).addTo(leafletMap);
+        leafletMarkers.push({ id: 'route-origin', marker: startMarker });
+
+        leafletMap.fitBounds([[origin.lat, origin.lng], [destination.lat, destination.lng]], { padding: [40, 40] });
+
+        const distKm = (calculateHaversineDistance(origin.lat, origin.lng, destination.lat, destination.lng)).toFixed(1);
+        const estMin = Math.max(1, Math.ceil(distKm * 2));
+
+        const legMock = {
+          distanceMeters: Math.round(distKm * 1000),
+          durationMillis: estMin * 60000,
+          steps: [
+            { instructions: `Proceed towards victim location at ${sos.locationName || sos.victimName}` },
+            { instructions: `Follow live navigation via Google Maps link below for turn-by-turn routing.` }
+          ]
+        };
+        renderDirectionsPanel(sos, legMock, origin, source);
+      } catch (error) {
+        showDirectionsPanelMessage(error.message || 'Location unavailable. Open Google Maps navigation below.', sos);
+      }
+    } else {
+      showDirectionsPanelMessage('Open navigation in Google Maps below.', sos);
     }
   }
 
@@ -664,6 +891,7 @@ window.ARS_MapManager = (function () {
     directionsPolylines = [];
     directionsMarkers.forEach(marker => marker.setMap(null));
     directionsMarkers = [];
+    clearLeafletMarkers();
   }
 
   function getDirectionsPanel() {
@@ -715,7 +943,7 @@ window.ARS_MapManager = (function () {
       ? `${(leg.distanceMeters / 1000).toFixed(1)} km`
       : `${leg.distanceMeters} m`;
     const duration = `${Math.ceil(leg.durationMillis / 60000)} min`;
-    summary.textContent = `Fastest driving route · ${distance} · ${duration} · traffic-aware`;
+    summary.textContent = `Driving route · ${distance} · ${duration}`;
     const closeButton = document.createElement('button');
     closeButton.type = 'button';
     closeButton.className = 'map-directions-close';
